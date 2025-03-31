@@ -105,16 +105,43 @@ def serve_sound(filename):
         return jsonify({"error": f"ファイル '{filename}' が見つかりません"}), 404
     return send_from_directory("static/mp3_sounds", filename)
 
-if __name__ == '__main__':
-    midi_directory = "static/sounds"
-    mp3_directory = "static/mp3_sounds"
-    os.makedirs(mp3_directory, exist_ok=True)
-    chords = load_chords(midi_directory)
-    for chord, midi_file in chords.items():
-        midi_path = os.path.join(midi_directory, midi_file)
-        mp3_path = os.path.join(mp3_directory, midi_file.replace(".mid", ".mp3"))
-        if not os.path.exists(mp3_path):
-            convert_midi_to_mp3(midi_path, mp3_path)
+@app.route('/check_answer', methods=['POST'])
+def check_answer():
+    data = request.get_json()
+    user = normalize(data['answer'])
+    correct = normalize(data['correct_answer'])
 
+    if user == correct:
+        result = "正解！"
+    else:
+        result = f"不正解！正解は {correct} でした"
+
+    return jsonify({"result": result})
+
+
+# normalize関数も一緒に定義（コードの統一・略記対応）
+def normalize(answer):
+    answer = answer.lower().replace(" ", "").replace("_", "")
+    answer = answer.replace("major", "M").replace("minor", "m")
+    answer = answer.replace("th", "")
+    answer = answer.replace("mM7", "mm7")  # 一部特殊な表記修正
+
+    # 例: "cm" -> "Cminor" へマッピングするなど必要に応じて追加可
+    return answer
+
+
+if __name__ == '__main__':
+    #以下ローカル用のやつ
+    #midi_directory = "static/sounds"
+    #mp3_directory = "static/mp3_sounds"
+    #os.makedirs(mp3_directory, exist_ok=True)
+    #chords = load_chords(midi_directory)
+    #for chord, midi_file in chords.items():
+       #midi_path = os.path.join(midi_directory, midi_file)
+        #mp3_path = os.path.join(mp3_directory, midi_file.replace(".mid", ".mp3"))
+        #if not os.path.exists(mp3_path):
+            #convert_midi_to_mp3(midi_path, mp3_path)
+
+    chords = load_chords("static/sounds")
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
