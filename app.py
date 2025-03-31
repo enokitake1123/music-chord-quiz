@@ -120,6 +120,30 @@ def serve_sound(filename):
         return jsonify({"error": f"ファイル '{filename}' が見つかりません"}), 404
     return send_from_directory("static/mp3_sounds", filename)
 
+@app.route('/check_answer', methods=['POST'])
+def check_answer():
+    data = request.get_json()
+    user = normalize(data['answer'])
+    correct = normalize(data['correct_answer'])
+
+    is_correct = (user == correct)
+    result = "正解！" if is_correct else f"不正解！正解は {data['correct_answer']} でした"
+
+    return jsonify({
+        "result": result,
+        "correct": is_correct
+    })
+
+def normalize(answer):
+    answer = answer.strip().lower()
+    answer = answer.replace(" ", "").replace("_", "")
+    answer = answer.replace("♯", "sharp").replace("#", "sharp")
+    answer = answer.replace("♭", "flat")
+    answer = answer.replace("major", "")     # major は省略可
+    answer = answer.replace("minor", "m")    # minor は m に
+    answer = answer.replace("th", "")        # th の省略も許容
+    return answer
+
 if __name__ == '__main__':
     midi_directory = "static/sounds"
     mp3_directory = "static/mp3_sounds"
