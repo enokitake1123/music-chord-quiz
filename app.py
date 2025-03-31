@@ -129,7 +129,7 @@ def normalize(answer):
     answer = answer.lower().replace(" ", "").replace("_", "")
     answer = answer.replace("major", "M").replace("minor", "m")
     answer = answer.replace("th", "")
-    answer = answer.replace("mM7", "mm7")  # 一部特殊な表記修正
+    answer = answer.replace("mM7")  # 一部特殊な表記修正
 
     # 例: "cm" -> "Cminor" へマッピングするなど必要に応じて追加可
     return answer
