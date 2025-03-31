@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>音楽コード当てクイズ</title>
+  <script>
+    let correctAnswers = [];
+    let userAnswers = [];
+    let currentQuestion = 0;
+    let totalQuestions = 10;
+    let score = 0;
+
+    function normalizeChordName(chord) {
+      // A# → Asharp, Bb → Bflat に変換
+      return chord.replace("#", "sharp").replace("b", "flat");
+    }
+
+    function fetchChords() {
+      correctAnswers = [];
+      userAnswers = [];
+      currentQuestion = 0;
+      score = 0;
+      document.getElementById("result").innerText = "";
+      document.getElementById("score").innerText = "";
+
+      let promises = [];
+      for (let i = 0; i < totalQuestions; i++) {
+        promises.push(fetch("/get_chord").then(response => response.json()));
+      }
+
+      Promise.all(promises).then(data => {
+        correctAnswers = data.map(item => normalizeChordName(item.answer));
+        console.log("✅ 取得した問題:", correctAnswers);
+        playChord();
+      }).catch(error => console.error("エラー:", error));
+    }
+
+    function playChord() {
+      if (currentQuestion >= totalQuestions) {
+        document.getElementById("score").innerText = `クイズ終了！スコア: ${score}/${totalQuestions}`;
+        return;
+      }
+
+      let formattedChord = correctAnswers[currentQuestion]
+        .replace("#", "sharp")
+        .replace("_", "");
+
+      let audioUrl = `/mp3_sounds/${formattedChord}.mp3`;
+
+      console.log(`🎵 再生するファイル (${currentQuestion + 1}/${totalQuestions}):`, audioUrl);
+
+      fetch(audioUrl, { method: "HEAD" })
+        .then(response => {
+          if (response.ok) {
+            let audio = new Audio(audioUrl);
+            audio.play().catch(error => console.error("再生エラー:", error));
+          } else {
+            console.error("❌ 404 エラー: 音声ファイルが見つかりません", audioUrl);
+          }
+        })
+        .catch(error => console.error("❌ ファイル確認エラー:", error));
+    }
+
+
+    function checkAnswer() {
+      let userAnswer = normalizeChordName(document.getElementById("user-answer").value.trim());
+      let correctAnswer = correctAnswers[currentQuestion];
+
+      fetch("/check_answer", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ answer: userAnswer, correct_answer: correctAnswer })
+      })
+        .then(response => response.json())
+        .then(data => {
+          document.getElementById("result").innerText = `問題 ${currentQuestion + 1}: ${data.result}`;
+
+          if (data.result.includes("正解")) {
+            score++;
+          }
+
+          currentQuestion++;
+
+          setTimeout(() => {
+            document.getElementById("user-answer").value = ""; // 入力欄をクリア
+            playChord();
+          }, 2000); // 2秒後に次のコードを再生
+        })
+        .catch(error => console.error("通信エラー:", error));
+    }
+  </script>
+</head>
+<body>
+  <h1>音楽コード当てクイズ</h1>
+  <button onclick="fetchChords()">クイズ開始</button>
+  <input type="text" id="user-answer" placeholder="コードを入力">
+  <button onclick="checkAnswer()">回答</button>
+  <p id="result"></p>
+  <p id="score"></p>
+</body>
+</html>
