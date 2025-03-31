@@ -17,24 +17,29 @@
     }
 
     function fetchChords() {
-      correctAnswers = [];
-      userAnswers = [];
-      currentQuestion = 0;
-      score = 0;
-      document.getElementById("result").innerText = "";
-      document.getElementById("score").innerText = "";
+  correctAnswers = [];
+  userAnswers = [];
+  currentQuestion = 0;
+  score = 0;
+  document.getElementById("result").innerText = "";
+  document.getElementById("score").innerText = "";
 
-      let promises = [];
-      for (let i = 0; i < totalQuestions; i++) {
-        promises.push(fetch("/get_chord").then(response => response.json()));
-      }
+  let difficulty = document.getElementById("difficulty").value; // ここ追加！
 
-      Promise.all(promises).then(data => {
-        correctAnswers = data.map(item => normalizeChordName(item.answer));
-        console.log("✅ 取得した問題:", correctAnswers);
-        playChord();
-      }).catch(error => console.error("エラー:", error));
-    }
+  let promises = [];
+  for (let i = 0; i < totalQuestions; i++) {
+    promises.push(
+      fetch(`/get_chord?difficulty=${difficulty}`)
+        .then(response => response.json())
+    );
+  }
+
+  Promise.all(promises).then(data => {
+    correctAnswers = data.map(item => normalizeChordName(item.answer));
+    playChord();
+  }).catch(error => console.error("エラー:", error));
+}
+
 
     function playChord() {
       if (currentQuestion >= totalQuestions) {
@@ -93,6 +98,13 @@
 </head>
 <body>
   <h1>音楽コード当てクイズ</h1>
+  <label>難易度:
+    <select id="difficulty">
+      <option value="easy">初級</option>
+      <option value="medium">中級</option>
+      <option value="hard">上級</option>
+    </select>
+  </label>  
   <button onclick="fetchChords()">クイズ開始</button>
   <input type="text" id="user-answer" placeholder="コードを入力">
   <button onclick="checkAnswer()">回答</button>
