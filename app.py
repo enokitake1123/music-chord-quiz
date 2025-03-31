@@ -126,13 +126,18 @@ def check_answer():
 
 # normalize関数も一緒に定義（コードの統一・略記対応）
 def normalize(answer):
-    answer = answer.lower().replace(" ", "").replace("_", "")
+    answer = answer.strip().lower()  # ← ✅ すべて小文字に
+    answer = answer.replace(" ", "").replace("_", "")
     answer = answer.replace("major", "M").replace("minor", "m")
     answer = answer.replace("th", "")
-    answer = answer.replace("mM7")  # 一部特殊な表記修正
+    answer = answer.replace("mm7", "mM7")  # 誤変換修正など必要なら追加
 
-    # 例: "cm" -> "Cminor" へマッピングするなど必要に応じて追加可
+    # 例: "asharpminor" などのパターンを正規化
+    answer = answer.replace("♯", "sharp").replace("#", "sharp")
+    answer = answer.replace("♭", "flat")
+
     return answer
+
 
 
 if __name__ == '__main__':
