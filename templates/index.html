@@ -74,19 +74,19 @@
       })
         .then(response => response.json())
         .then(data => {
-          document.getElementById("result").innerText = `問題 ${currentQuestion + 1}: ${data.result}`;
+  document.getElementById("result").innerText = `問題 ${currentQuestion + 1}: ${data.result}`;
 
-          if (data.result.includes("正解")) {
-            score++;
-          }
+  if (data.correct) {  // ← ✅ 文字列で判定せず、フラグで判定
+    score++;
+  }
 
-          currentQuestion++;
+  currentQuestion++;
 
-          setTimeout(() => {
-            document.getElementById("user-answer").value = ""; // 入力欄をクリア
-            playChord();
-          }, 2000); // 2秒後に次のコードを再生
-        })
+  setTimeout(() => {
+    document.getElementById("user-answer").value = "";
+    playChord();
+  }, 2000);
+})
         .catch(error => console.error("通信エラー:", error));
     }
   </script>

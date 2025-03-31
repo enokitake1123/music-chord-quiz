@@ -111,12 +111,17 @@ def check_answer():
     user = normalize(data['answer'])
     correct = normalize(data['correct_answer'])
 
-    if user == correct:
+    is_correct = (user == correct)
+    if is_correct:
         result = "正解！"
     else:
         result = f"不正解！正解は {correct} でした"
 
-    return jsonify({"result": result})
+    return jsonify({
+        "result": result,
+        "correct": is_correct  # ← ✅ 正誤フラグを追加
+    })
+
 
 
 # normalize関数も一緒に定義（コードの統一・略記対応）
