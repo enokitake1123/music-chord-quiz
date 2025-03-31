@@ -112,31 +112,36 @@ def check_answer():
     correct = normalize(data['correct_answer'])
 
     is_correct = (user == correct)
-    if is_correct:
-        result = "正解！"
-    else:
-        result = f"不正解！正解は {correct} でした"
+    result = "正解！" if is_correct else f"不正解！正解は {data['correct_answer']} でした"
 
-    return jsonify({
-        "result": result,
-        "correct": is_correct  # ← ✅ 正誤フラグを追加
-    })
+    return jsonify({"result": result, "correct": is_correct})
 
 
 
-# normalize関数も一緒に定義（コードの統一・略記対応）
+
 def normalize(answer):
-    answer = answer.strip().lower()  # ← ✅ すべて小文字に
+    answer = answer.strip().lower()
     answer = answer.replace(" ", "").replace("_", "")
-    answer = answer.replace("major", "M").replace("minor", "m")
-    answer = answer.replace("th", "")
-    answer = answer.replace("mm7", "mM7")  # 誤変換修正など必要なら追加
-
-    # 例: "asharpminor" などのパターンを正規化
     answer = answer.replace("♯", "sharp").replace("#", "sharp")
     answer = answer.replace("♭", "flat")
 
+    # 「major」は省略可 → 削除
+    if "major" in answer:
+        answer = answer.replace("major", "")
+
+    # 「C」だけ入力された場合、正解側が Cmajor だったら一致するように
+    # よって正解側も normalize() で "cmajor" → "c" になる
+    if answer.endswith("m") or "minor" in answer:
+        answer = answer.replace("minor", "m")  # minor は m に統一
+    else:
+        # major の省略扱い
+        pass  # すでに major は削除済み
+
+    # 余計な th を削除（7th → 7 など）
+    answer = answer.replace("th", "")
+
     return answer
+
 
 
 
