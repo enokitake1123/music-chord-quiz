@@ -86,13 +86,28 @@ def index():
 
 @app.route('/get_chord')
 def get_chord():
-    if not chords:
-        print("❌ エラー: コード音源が見つかりません。")
-        return jsonify({"error": "コード音源が見つかりません。'static/sounds/' に .mid ファイルを追加してください。"}), 400
-    correct_answer = random.choice(list(chords.keys()))
+    difficulty = request.args.get("difficulty", "easy")
+
+    easy_types = ["major", "minor"]
+    medium_types = easy_types + ["7th", "m7", "dim", "aug", "sus4"]
+    hard_types = medium_types + ["add9", "m7-5", "7#9", "7-5", "7-9", "6", "m6"]
+
+    def filter_chords(types):
+        return [chord for chord in chords.keys() if any(t in chord for t in types)]
+
+    if difficulty == "easy":
+        pool = filter_chords(easy_types)
+    elif difficulty == "medium":
+        pool = filter_chords(medium_types)
+    else:
+        pool = list(chords.keys())
+
+    if not pool:
+        return jsonify({"error": "該当するコードがありません"}), 400
+
+    correct_answer = random.choice(pool)
     formatted_answer = correct_answer.replace("#", "sharp").replace("_", "")
-    print(f"🔄 送信するコード: {correct_answer} → {formatted_answer}")
-    return jsonify({"chord": f"/mp3_sounds/{formatted_answer}.mp3", "answer": correct_answer})  # ここを sharp なしに
+    return jsonify({"chord": f"/mp3_sounds/{formatted_answer}.mp3", "answer": correct_answer})
 
 @app.route('/mp3_sounds/<path:filename>')
 def serve_sound(filename):
@@ -110,12 +125,6 @@ if __name__ == '__main__':
     mp3_directory = "static/mp3_sounds"
     os.makedirs(mp3_directory, exist_ok=True)
     chords = load_chords(midi_directory)
-    # 変換ロジックを無効化
-    # for chord, midi_file in chords.items():
-    #     midi_path = os.path.join(midi_directory, midi_file)
-    #     mp3_path = os.path.join(mp3_directory, midi_file.replace(".mid", ".mp3"))
-    #     if not os.path.exists(mp3_path):
-    #         convert_midi_to_mp3(midi_path, mp3_path)
 
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
