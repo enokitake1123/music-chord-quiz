@@ -46,7 +46,7 @@ def load_chords(directory="static/sounds"):
     for file in os.listdir(directory):
         if file.endswith(".mid"):
             chord_name = file.replace(".mid", "").replace("_", "")
-            chord_name = chord_name.replace("A#", "Asharp").replace("Bb", "Bflat")
+            chord_name = chord_name.replace("A#", "A#").replace("Bb", "Bflat")  # sharp を戻した
             chords[chord_name] = file
     return chords
 
@@ -92,7 +92,7 @@ def get_chord():
     correct_answer = random.choice(list(chords.keys()))
     formatted_answer = correct_answer.replace("#", "sharp").replace("_", "")
     print(f"🔄 送信するコード: {correct_answer} → {formatted_answer}")
-    return jsonify({"chord": f"/mp3_sounds/{formatted_answer}.mp3", "answer": formatted_answer})
+    return jsonify({"chord": f"/mp3_sounds/{formatted_answer}.mp3", "answer": correct_answer})  # ここを sharp なしに
 
 @app.route('/mp3_sounds/<path:filename>')
 def serve_sound(filename):
@@ -105,58 +105,17 @@ def serve_sound(filename):
         return jsonify({"error": f"ファイル '{filename}' が見つかりません"}), 404
     return send_from_directory("static/mp3_sounds", filename)
 
-@app.route('/check_answer', methods=['POST'])
-def check_answer():
-    data = request.get_json()
-    user = normalize(data['answer'])
-    correct = normalize(data['correct_answer'])
-
-    is_correct = (user == correct)
-    result = "正解！" if is_correct else f"不正解！正解は {data['correct_answer']} でした"
-
-    return jsonify({"result": result, "correct": is_correct})
-
-
-
-
-def normalize(answer):
-    answer = answer.strip().lower()
-    answer = answer.replace(" ", "").replace("_", "")
-    answer = answer.replace("♯", "sharp").replace("#", "sharp")
-    answer = answer.replace("♭", "flat")
-
-    # 「major」は省略可 → 削除
-    if "major" in answer:
-        answer = answer.replace("major", "")
-
-    # 「C」だけ入力された場合、正解側が Cmajor だったら一致するように
-    # よって正解側も normalize() で "cmajor" → "c" になる
-    if answer.endswith("m") or "minor" in answer:
-        answer = answer.replace("minor", "m")  # minor は m に統一
-    else:
-        # major の省略扱い
-        pass  # すでに major は削除済み
-
-    # 余計な th を削除（7th → 7 など）
-    answer = answer.replace("th", "")
-
-    return answer
-
-
-
-
 if __name__ == '__main__':
-    #以下ローカル用のやつ
-    #midi_directory = "static/sounds"
-    #mp3_directory = "static/mp3_sounds"
-    #os.makedirs(mp3_directory, exist_ok=True)
-    #chords = load_chords(midi_directory)
-    #for chord, midi_file in chords.items():
-       #midi_path = os.path.join(midi_directory, midi_file)
-        #mp3_path = os.path.join(mp3_directory, midi_file.replace(".mid", ".mp3"))
-        #if not os.path.exists(mp3_path):
-            #convert_midi_to_mp3(midi_path, mp3_path)
+    midi_directory = "static/sounds"
+    mp3_directory = "static/mp3_sounds"
+    os.makedirs(mp3_directory, exist_ok=True)
+    chords = load_chords(midi_directory)
+    # 変換ロジックを無効化
+    # for chord, midi_file in chords.items():
+    #     midi_path = os.path.join(midi_directory, midi_file)
+    #     mp3_path = os.path.join(mp3_directory, midi_file.replace(".mid", ".mp3"))
+    #     if not os.path.exists(mp3_path):
+    #         convert_midi_to_mp3(midi_path, mp3_path)
 
-    chords = load_chords("static/sounds")
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
