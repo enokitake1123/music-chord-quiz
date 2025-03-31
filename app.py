@@ -106,9 +106,14 @@ def get_chord():
         return jsonify({"error": "該当するコードがありません"}), 400
 
     correct_answer = random.choice(pool)
-    formatted_answer = correct_answer.replace("#", "sharp").replace("_", "")
-    display_answer = correct_answer.replace("sharp", "#").replace("major", "")  # Fsharpmajor → F#
-    return jsonify({"chord": f"/mp3_sounds/{formatted_answer}.mp3", "answer": display_answer})
+    formatted_answer = correct_answer.replace("#", "sharp").replace("_", "")  # ファイル名用
+    display_answer = correct_answer.replace("sharp", "#").replace("major", "")  # 表示用
+
+    return jsonify({
+        "chord": f"/mp3_sounds/{formatted_answer}.mp3",
+        "answer": display_answer,
+        "correct_raw": correct_answer  # 内部チェック用（/check_answer で使う）
+    })
 
 @app.route('/mp3_sounds/<path:filename>')
 def serve_sound(filename):
@@ -125,12 +130,10 @@ def serve_sound(filename):
 def check_answer():
     data = request.get_json()
     user = normalize(data['answer'])
-    correct = normalize(data['correct_answer'])
+    correct = normalize(data['correct_answer']) if 'correct_answer' in data else normalize(data['correct_raw'])
 
     is_correct = (user == correct)
-
-    # 表示用正解名: sharp → # に戻す + major を省略
-    display_answer = data['correct_answer'].replace("sharp", "#").replace("major", "")
+    display_answer = data.get('correct_answer', data.get('correct_raw', '')).replace("sharp", "#").replace("major", "")
 
     result = "正解！" if is_correct else f"不正解！正解は {display_answer} でした"
 
