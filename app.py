@@ -106,8 +106,14 @@ def get_chord():
         return jsonify({"error": "該当するコードがありません"}), 400
 
     correct_answer = random.choice(pool)
-    formatted_answer = correct_answer.replace("#", "sharp").replace("_", "")
+    # 正しいファイル名にする（コードタイプ付き）
+    formatted_answer = correct_answer.replace("#", "sharp").replace("_", "")  # ファイル用
+
+    # 表示名は sharp→#、majorを省略（例：G#）
     display_answer = correct_answer.replace("sharp", "#").replace("major", "")
+
+    print(f"🎯 正解コード: {correct_answer}")
+    print(f"🎧 再生ファイル: /mp3_sounds/{formatted_answer}.mp3")
 
     return jsonify({
         "chord": f"/mp3_sounds/{formatted_answer}.mp3",
