@@ -61,8 +61,8 @@ def create_midi_chord(chord_name, filename):
         "7th": [0, 4, 7, 10],
         "dim": [0, 3, 6],
         "aug": [0, 4, 8],
-        "M7": [0, 4, 7, 11],
-        "m7": [0, 3, 7, 10]
+        "major7": [0, 4, 7, 11],
+        "minor7": [0, 3, 7, 10]
     }
     base, chord_type = chord_name.rsplit("_", 1) if "_" in chord_name else (chord_name, "major")
     base = base.replace("#", "sharp")
@@ -91,8 +91,8 @@ def get_chord():
     difficulty = request.args.get("difficulty", "easy")
 
     easy_types = ["major", "minor"]
-    medium_types = easy_types + ["7th", "m7", "dim", "aug", "sus4"]
-    hard_types = medium_types + ["add9", "m7-5", "7#9", "7-5", "7-9", "6", "m6", "M7"]
+    medium_types = easy_types + ["7th", "minor7", "dim", "aug", "sus4"]
+    hard_types = medium_types + ["add9", "m7-5", "7#9", "7-5", "7-9", "6", "m6", "major7"]
 
     def filter_chords(types):
         return [chord for chord in chords.keys() if any(t in chord for t in types)]
@@ -161,6 +161,25 @@ if __name__ == '__main__':
     midi_directory = "static/sounds"
     mp3_directory = "static/mp3_sounds"
     os.makedirs(mp3_directory, exist_ok=True)
+
+    # 自動生成：すべてのコードタイプのMIDI/MP3を準備
+    all_chord_types = ["major", "minor", "7th", "dim", "aug", "major7", "minor7"]
+    all_bases = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
+
+    for base in all_bases:
+        for ctype in all_chord_types:
+            chord_key = f"{base}_{ctype}"
+            base_safe = base.replace("#", "sharp")
+            midi_filename = f"{base_safe}_{ctype}.mid"
+            midi_path = os.path.join(midi_directory, midi_filename)
+            mp3_filename = midi_filename.replace(".mid", ".mp3").replace("_", "").replace("sharp", "sharp")
+            mp3_path = os.path.join(mp3_directory, mp3_filename)
+
+            if not os.path.exists(midi_path):
+                create_midi_chord(chord_key, midi_path)
+            if not os.path.exists(mp3_path):
+                convert_midi_to_mp3(midi_path, mp3_path)
+
     chords = load_chords(midi_directory)
 
     port = int(os.environ.get("PORT", 5000))
