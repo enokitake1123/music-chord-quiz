@@ -1,131 +1,186 @@
-import pygame
-import random
+from flask import Flask, render_template, request, jsonify, send_from_directory
 import os
+import random
+import subprocess
+import shutil
 import mido
 from mido import Message, MidiFile, MidiTrack
 
-def create_midi_chord(chord_name, filename):
-    """ 指定したコードのMIDIファイルを作成 """
-    base_notes = {
-        "C": 60, "C#": 61, "D": 62, "D#": 63, "E": 64, "F": 65,
-        "F#": 66, "G": 67, "G#": 68, "A": 69, "A#": 70, "B": 71
-    }
+app = Flask(__name__, static_folder="static")
 
+# MIDI を WAV に変換し、MP3 に変換
+def convert_midi_to_mp3(midi_file, mp3_file):
+    ffmpeg_path = shutil.which("ffmpeg")
+    timidity_path = shutil.which("timidity")
+
+    if not ffmpeg_path:
+        print("❌ エラー: ffmpeg が見つかりません。")
+        return
+    if not timidity_path:
+        print("❌ エラー: timidity が見つかりません。")
+        return
+
+    mp3_file = mp3_file.replace("mp3sounds", "mp3_sounds").replace("#", "sharp")
+    mp3_dir = os.path.dirname(mp3_file)
+    os.makedirs(mp3_dir, exist_ok=True)
+
+    wav_file = midi_file.replace(".mid", ".wav")
+
+    command1 = [timidity_path, midi_file, "-Ow", "-o", wav_file]
+    result1 = subprocess.run(command1, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    if result1.returncode != 0:
+        print(f"❌ Timidity 変換エラー: {result1.stderr}")
+        return
+
+    command2 = [ffmpeg_path, "-i", wav_file, "-b:a", "192k", "-y", mp3_file]
+    result2 = subprocess.run(command2, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    if result2.returncode != 0:
+        print(f"❌ ffmpeg 変換エラー: {result2.stderr}")
+    else:
+        print(f"✅ '{mp3_file}' が作成されました")
+
+    os.remove(wav_file)
+
+def load_chords(directory="static/sounds"):
+    chords = {}
+    for file in os.listdir(directory):
+        if file.endswith(".mid"):
+            chord_name = file.replace(".mid", "")
+            chord_name = chord_name.replace("A#", "A#").replace("Bb", "Bflat")
+            chords[chord_name] = file
+    return chords
+
+def create_midi_chord(chord_name, filename):
+    base_notes = {
+        "C": 60, "C#": 61, "Db": 61, "D": 62, "D#": 63, "Eb": 63, "E": 64, "F": 65,
+        "F#": 66, "Gb": 66, "G": 67, "G#": 68, "Ab": 68, "A": 69, "A#": 70, "Bb": 70, "B": 71
+    }
     chord_types = {
         "major": [0, 4, 7],
         "minor": [0, 3, 7],
         "7th": [0, 4, 7, 10],
-        "9th": [0, 4, 7, 10, 14],
         "dim": [0, 3, 6],
         "aug": [0, 4, 8],
-        "m7": [0, 3, 7, 10],
-        "M7": [0, 4, 7, 11],
-        "mM7": [0, 3, 7, 11],
-        "sus4": [0, 5, 7],
-        "7sus4": [0, 5, 7, 10],
-        "m7-5": [0, 3, 6, 10],
-        "add9": [0, 4, 7, 14],
-        "6": [0, 4, 7, 9],
-        "m6": [0, 3, 7, 9],
-        "sus2": [0, 2, 7],
-        "7#9": [0, 4, 7, 10, 15],
-        "7-5": [0, 4, 6, 10],
-        "7-9": [0, 4, 7, 10, 13]
+        "major7": [0, 4, 7, 11],
+        "minor7": [0, 3, 7, 10]
     }
-
     base, chord_type = chord_name.rsplit("_", 1) if "_" in chord_name else (chord_name, "major")
-    if base not in base_notes or chord_type not in chord_types:
+    base = base.replace("#", "sharp")
+    correct_filename = f"{base}_{chord_type}.mid"
+    root_note = base_notes.get(base)
+    if root_note is None or chord_type not in chord_types:
         print(f"{chord_name} は未登録のコードです。")
         return
-
-    root_note = base_notes[base]
     notes = [root_note + interval for interval in chord_types[chord_type]]
-
     mid = MidiFile()
     track = MidiTrack()
     mid.tracks.append(track)
-
     for note in notes:
         track.append(Message("note_on", note=note, velocity=64, time=0))
-    track.append(Message("note_off", note=notes[0], velocity=64, time=960))  # 一定の長さにする
+    track.append(Message("note_off", note=notes[0], velocity=64, time=960))
     for note in notes[1:]:
         track.append(Message("note_off", note=note, velocity=64, time=0))
-
     mid.save(filename)
 
-def load_chords(directory="sounds"):
-    """ 指定したディレクトリ内のMIDIファイルを取得 """
-    chords = {}
-    for file in os.listdir(directory):
-        if file.endswith(".mid") and not ("11th" in file or "13th" in file):
-            chord_name = file.replace(".mid", "").replace("_", "").replace("th", "")
-            chords[chord_name] = os.path.join(directory, file)
-    return chords
+@app.route('/')
+def index():
+    return render_template('index.html')
 
-def play_midi(file_path):
-    """ 指定したMIDIファイルを再生 """
-    pygame.mixer.init()
-    pygame.mixer.music.load(file_path)
-    pygame.mixer.music.play()
-    while pygame.mixer.music.get_busy():  # 再生終了まで待機
-        continue
+@app.route('/get_chord')
+def get_chord():
+    difficulty = request.args.get("difficulty", "easy")
 
-def normalize_answer(answer):
-    """ major を M, minor を m として扱い、アンダースコアなしでも正解にする """
-    answer = answer.replace("major", "M").replace("minor", "m").replace(" ", "").replace("_", "").replace("th", "")
-    if answer[-1].isdigit():
-        return answer.lower()
-    return answer.lower().replace("m", "")  # majorの場合、何も書かなくても正解
+    easy_types = ["major", "minor"]
+    medium_types = easy_types + ["7th", "minor7", "dim", "aug", "sus4"]
+    hard_types = medium_types + ["add9", "m7-5", "7#9", "7-5", "7-9", "6", "m6", "major7"]
 
-def quiz(chords):
-    """ 音楽コードクイズの実行 """
-    score = 0
-    questions = 10
-    chord_names = list(chords.keys())
+    def filter_chords(types):
+        return [chord for chord in chords.keys() if any(t in chord for t in types)]
 
-    print("音楽コード当てクイズを始めます！")
-    print("再生されるコードを聞いて、正しいコード名を入力してください。\n")
-
-    for _ in range(questions):
-        correct_answer = random.choice(chord_names)
-        print("コードを再生します...")
-        play_midi(chords[correct_answer])
-
-        user_answer = input("このコードは何ですか？: ")
-
-        if normalize_answer(user_answer) == normalize_answer(correct_answer):
-            print("正解！\n")
-            score += 1
-        else:
-            print(f"不正解！正解は {correct_answer} でした。\n")
-
-    print(f"クイズ終了！あなたのスコア: {score}/{questions}")
-
-    if score == 10:
-        print("完璧です！素晴らしい耳を持っています！")
-    elif score >= 7:
-        print("とても良いです！あと少しで完璧です！")
-    elif score >= 4:
-        print("まあまあです！練習すればもっと良くなります！")
+    if difficulty == "easy":
+        pool = filter_chords(easy_types)
+    elif difficulty == "medium":
+        pool = filter_chords(medium_types)
     else:
-        print("もっと練習が必要です！頑張りましょう！")
+        pool = list(chords.keys())
 
-if __name__ == "__main__":
-    # MIDIファイルを作成
-    midi_directory = "sounds"
-    os.makedirs(midi_directory, exist_ok=True)
+    if not pool:
+        return jsonify({"error": "該当するコードがありません"}), 400
 
-    chord_list = []
-    bases = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
-    types = ["major", "minor", "dim", "aug", "m7", "M7", "mM7", "sus4", "7sus4", "m7-5", "add9", "6", "m6", "sus2", "7#9", "7-5", "7-9"]
+    correct_answer = random.choice(pool)
+    formatted_answer = correct_answer.replace("#", "sharp")
+    display_answer = correct_answer.replace("sharp", "#").replace("major", "")
 
-    for base in bases:
-        for ctype in types:
-            chord_list.append(f"{base}{ctype}")
-            create_midi_chord(f"{base}_{ctype}", os.path.join(midi_directory, f"{base}_{ctype}.mid"))
+    print(f"🎯 正解コード: {correct_answer}")
+    print(f"🎧 再生ファイル: /mp3_sounds/{formatted_answer}.mp3")
+
+    return jsonify({
+        "chord": f"/mp3_sounds/{formatted_answer}.mp3",
+        "answer": display_answer,
+        "correct_raw": correct_answer
+    })
+
+@app.route('/mp3_sounds/<path:filename>')
+def serve_sound(filename):
+    filename = filename.replace("#", "sharp")
+    file_path = os.path.join("static/mp3_sounds", filename)
+    if not os.path.exists(file_path):
+        available_files = os.listdir("static/mp3_sounds/")
+        print(f"❌ エラー: '{filename}' が見つかりません")
+        print(f"📂 既存のファイル一覧: {available_files}")
+        return jsonify({"error": f"ファイル '{filename}' が見つかりません"}), 404
+    return send_from_directory("static/mp3_sounds", filename)
+
+@app.route('/check_answer', methods=['POST'])
+def check_answer():
+    data = request.get_json()
+    user = normalize(data['answer'])
+    correct = normalize(data['correct_answer']) if 'correct_answer' in data else normalize(data['correct_raw'])
+
+    is_correct = (user == correct)
+    display_answer = data.get('correct_answer', data.get('correct_raw', '')).replace("sharp", "#").replace("major", "")
+
+    result = "正解！" if is_correct else f"不正解！正解は {display_answer} でした"
+
+    return jsonify({
+        "result": result,
+        "correct": is_correct
+    })
+
+def normalize(answer):
+    answer = answer.strip().lower()
+    answer = answer.replace(" ", "").replace("_", "")
+    answer = answer.replace("♯", "sharp").replace("#", "sharp")
+    answer = answer.replace("♭", "flat")
+    answer = answer.replace("major", "")
+    answer = answer.replace("minor", "m")
+    answer = answer.replace("th", "")
+    return answer
+
+if __name__ == '__main__':
+    midi_directory = "static/sounds"
+    mp3_directory = "static/mp3_sounds"
+    os.makedirs(mp3_directory, exist_ok=True)
+
+    # 自動生成：すべてのコードタイプのMIDI/MP3を準備
+    all_chord_types = ["major", "minor", "7th", "dim", "aug", "major7", "minor7"]
+    all_bases = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
+
+    for base in all_bases:
+        for ctype in all_chord_types:
+            chord_key = f"{base}_{ctype}"
+            base_safe = base.replace("#", "sharp")
+            midi_filename = f"{base_safe}_{ctype}.mid"
+            midi_path = os.path.join(midi_directory, midi_filename)
+            mp3_filename = midi_filename.replace(".mid", ".mp3").replace("#", "sharp")  # アンダースコアは残す
+            mp3_path = os.path.join(mp3_directory, mp3_filename)
+
+            if not os.path.exists(midi_path):
+                create_midi_chord(chord_key, midi_path)
+            if not os.path.exists(mp3_path):
+                convert_midi_to_mp3(midi_path, mp3_path)
 
     chords = load_chords(midi_directory)
-    if not chords:
-        print("エラー: コード音源が見つかりません。'sounds/' フォルダを確認してください。")
-    else:
-        quiz(chords)
+
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host='0.0.0.0', port=port)
