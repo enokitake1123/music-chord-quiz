@@ -64,7 +64,7 @@ def create_midi_chord(chord_name, filename):
     }
     base, chord_type = chord_name.rsplit("_", 1) if "_" in chord_name else (chord_name, "major")
     base = base.replace("#", "sharp")
-    correct_filename = f"{base}{chord_type}.mid"
+    correct_filename = f"{base}_{chord_type}.mid"
     root_note = base_notes.get(base)
     if root_note is None or chord_type not in chord_types:
         print(f"{chord_name} は未登録のコードです。")
@@ -106,13 +106,13 @@ def get_chord():
         return jsonify({"error": "該当するコードがありません"}), 400
 
     correct_answer = random.choice(pool)
-    formatted_answer = correct_answer.replace("#", "sharp").replace("_", "")  # ファイル名用
-    display_answer = correct_answer.replace("sharp", "#").replace("major", "")  # 表示用
+    formatted_answer = correct_answer.replace("#", "sharp").replace("_", "")
+    display_answer = correct_answer.replace("sharp", "#").replace("major", "")
 
     return jsonify({
         "chord": f"/mp3_sounds/{formatted_answer}.mp3",
         "answer": display_answer,
-        "correct_raw": correct_answer  # 内部チェック用（/check_answer で使う）
+        "correct_raw": correct_answer
     })
 
 @app.route('/mp3_sounds/<path:filename>')
