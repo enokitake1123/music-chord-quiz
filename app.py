@@ -60,7 +60,9 @@ def create_midi_chord(chord_name, filename):
         "minor": [0, 3, 7],
         "7th": [0, 4, 7, 10],
         "dim": [0, 3, 6],
-        "aug": [0, 4, 8]
+        "aug": [0, 4, 8],
+        "M7": [0, 4, 7, 11],
+        "m7": [0, 3, 7, 10]
     }
     base, chord_type = chord_name.rsplit("_", 1) if "_" in chord_name else (chord_name, "major")
     base = base.replace("#", "sharp")
@@ -90,7 +92,7 @@ def get_chord():
 
     easy_types = ["major", "minor"]
     medium_types = easy_types + ["7th", "m7", "dim", "aug", "sus4"]
-    hard_types = medium_types + ["add9", "m7-5", "7#9", "7-5", "7-9", "6", "m6"]
+    hard_types = medium_types + ["add9", "m7-5", "7#9", "7-5", "7-9", "6", "m6", "M7"]
 
     def filter_chords(types):
         return [chord for chord in chords.keys() if any(t in chord for t in types)]
@@ -106,10 +108,7 @@ def get_chord():
         return jsonify({"error": "該当するコードがありません"}), 400
 
     correct_answer = random.choice(pool)
-    # 正しいファイル名にする（コードタイプ付き）
-    formatted_answer = correct_answer.replace("#", "sharp").replace("_", "")  # ファイル用
-
-    # 表示名は sharp→#、majorを省略（例：G#）
+    formatted_answer = correct_answer.replace("#", "sharp").replace("_", "")
     display_answer = correct_answer.replace("sharp", "#").replace("major", "")
 
     print(f"🎯 正解コード: {correct_answer}")
