@@ -11,7 +11,7 @@
     let totalQuestions = 10;
     let score = 0;
     let chordsData = [];
-  
+
     function fetchChords() {
       correctAnswers = [];
       chordsData = [];
@@ -20,29 +20,30 @@
       score = 0;
       document.getElementById("result").innerText = "";
       document.getElementById("score").innerText = "";
-  
+
+      const difficulty = document.getElementById("difficulty").value;
+
       let promises = [];
       for (let i = 0; i < totalQuestions; i++) {
-        promises.push(fetch("/get_chord").then(response => response.json()));
+        promises.push(fetch(`/get_chord?difficulty=${difficulty}`).then(response => response.json()));
       }
-  
+
       Promise.all(promises).then(data => {
         chordsData = data;
-        correctAnswers = data.map(item => item.answer); // 表示用のみ
+        correctAnswers = data.map(item => item.answer);
         playChord();
       }).catch(error => console.error("エラー:", error));
     }
-  
+
     function playChord() {
       if (currentQuestion >= totalQuestions) {
         document.getElementById("score").innerText = `クイズ終了！スコア: ${score}/${totalQuestions}`;
         return;
       }
-  
-      let audioUrl = chordsData[currentQuestion].chord; // ← 修正済み！
-  
+
+      let audioUrl = chordsData[currentQuestion].chord;
       console.log(`🎵 再生ファイル (${currentQuestion + 1}): ${audioUrl}`);
-  
+
       fetch(audioUrl, { method: "HEAD" })
         .then(response => {
           if (response.ok) {
@@ -54,12 +55,12 @@
         })
         .catch(error => console.error("❌ 音声取得エラー:", error));
     }
-  
+
     function checkAnswer() {
       let userAnswer = document.getElementById("user-answer").value.trim();
       let correctAnswer = correctAnswers[currentQuestion];
       let correctRaw = chordsData[currentQuestion].correct_raw;
-  
+
       fetch("/check_answer", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -68,9 +69,9 @@
         .then(response => response.json())
         .then(data => {
           document.getElementById("result").innerText = `問題 ${currentQuestion + 1}: ${data.result}`;
-  
+
           if (data.correct) score++;
-  
+
           currentQuestion++;
           setTimeout(() => {
             document.getElementById("user-answer").value = "";
@@ -79,20 +80,24 @@
         })
         .catch(error => console.error("通信エラー:", error));
     }
-  </script>  
+  </script>
 </head>
 <body>
   <h1>音楽コード当てクイズ</h1>
+
   <label>難易度:
     <select id="difficulty">
       <option value="easy">初級</option>
       <option value="medium">中級</option>
       <option value="hard">上級</option>
     </select>
-  </label>  
+  </label>
+  <br><br>
+
   <button onclick="fetchChords()">クイズ開始</button>
   <input type="text" id="user-answer" placeholder="コードを入力">
   <button onclick="checkAnswer()">回答</button>
+  
   <p id="result"></p>
   <p id="score"></p>
 </body>
