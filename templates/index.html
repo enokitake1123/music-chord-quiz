@@ -12,7 +12,7 @@
     let totalQuestions = 10;
     let score = 0;
     let chordsData = [];
-
+  
     function fetchChords() {
       correctAnswers = [];
       userAnswers = [];
@@ -22,33 +22,35 @@
       document.getElementById("result").innerText = "";
       document.getElementById("score").innerText = "";
       document.getElementById("history").innerHTML = "";
-
+  
       const difficulty = document.getElementById("difficulty").value;
-
+  
       let promises = [];
       for (let i = 0; i < totalQuestions; i++) {
         promises.push(fetch(`/get_chord?difficulty=${difficulty}`).then(response => response.json()));
       }
-
+  
       Promise.all(promises).then(data => {
         chordsData = data;
-        correctAnswers = data.map(item => item.answer);
+        correctAnswers = data.map(item => item.answer); // これは表示用
         playChord();
       }).catch(error => console.error("エラー:", error));
     }
-
+  
     function playChord() {
       if (currentQuestion >= totalQuestions) {
         document.getElementById("score").innerText = `クイズ終了！スコア: ${score}/${totalQuestions}`;
         showHistory();
         return;
       }
-
-      let formattedChord = correctAnswers[currentQuestion].replace("#", "sharp");
+  
+      // 🔥 正しいファイル名の生成：sharpに変換し、_を除去
+      let correctRaw = chordsData[currentQuestion].correct_raw;
+      let formattedChord = correctRaw.replace("#", "sharp").replace("_", "");
       let audioUrl = `/mp3_sounds/${formattedChord}.mp3`;
-
+  
       console.log(`🎵 再生するファイル:`, audioUrl);
-
+  
       fetch(audioUrl, { method: "HEAD" })
         .then(response => {
           if (response.ok) {
@@ -60,12 +62,12 @@
         })
         .catch(error => console.error("❌ ファイル確認エラー:", error));
     }
-
+  
     function checkAnswer() {
       let userAnswer = document.getElementById("user-answer").value.trim();
       let correctAnswer = correctAnswers[currentQuestion];
       let correctRaw = chordsData[currentQuestion].correct_raw;
-
+  
       fetch("/check_answer", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -74,14 +76,14 @@
         .then(response => response.json())
         .then(data => {
           document.getElementById("result").innerText = `問題 ${currentQuestion + 1}: ${data.result}`;
-
+  
           if (data.correct) score++;
-
+  
           userAnswers.push(userAnswer);
           results.push(data.result);
-
+  
           currentQuestion++;
-
+  
           setTimeout(() => {
             document.getElementById("user-answer").value = "";
             playChord();
@@ -89,17 +91,18 @@
         })
         .catch(error => console.error("通信エラー:", error));
     }
-
+  
     function showHistory() {
       let table = "<h3>回答履歴</h3><table border='1'><tr><th>問題</th><th>あなたの答え</th><th>正解</th><th>結果</th></tr>";
       for (let i = 0; i < totalQuestions; i++) {
         const resultText = results[i].includes("正解") ? "⭕️" : "❌";
-        table += `<tr><td>${i + 1}</td><td>${userAnswers[i]}</td><td>${correctAnswers[i]}</td><td>${resultText}</td></tr>`;
+        const displayedAnswer = correctAnswers[i].replace("sharp", "#").replace("_", "");
+        table += `<tr><td>${i + 1}</td><td>${userAnswers[i]}</td><td>${displayedAnswer}</td><td>${resultText}</td></tr>`;
       }
       table += "</table>";
       document.getElementById("history").innerHTML = table;
     }
-  </script>
+  </script>  
 </head>
 <body>
   <h1>音楽コード当てクイズ</h1>
