@@ -47,7 +47,7 @@
       // 🔥 正しいファイル名の生成：sharpに変換し、_を除去
       let correctRaw = chordsData[currentQuestion].correct_raw;
       let formattedChord = correctRaw.replace("#", "sharp").replace("_", "");
-      let audioUrl = `/mp3_sounds/${formattedChord}.mp3`;
+      let audioUrl = `/mp3sounds/${formattedChord}.mp3`;
   
       console.log(`🎵 再生するファイル:`, audioUrl);
   
