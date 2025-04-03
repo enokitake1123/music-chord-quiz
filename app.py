@@ -117,9 +117,9 @@ def get_chord():
     correct_answer = random.choice(pool)
 
     # ✅ 修正点：formatted と raw をアンダースコアなしで統一
-    formatted_answer = correct_answer.replace("#", "sharp").replace("_", "")
-    display_answer = correct_answer.replace("sharp", "#").replace("_", "").replace("major", "")
-    raw_answer = correct_answer.replace("_", "")  # ← これが変更点！
+    formatted_answer = correct_answer.replace("#", "sharp")
+    display_answer = correct_answer.replace("sharp", "#").replace("major", "")
+    raw_answer = correct_answer.replace # ← これが変更点！
 
     print(f"🎯 正解コード: {correct_answer}")
     print(f"🎧 再生ファイル: /mp3_sounds/{formatted_answer}.mp3")
@@ -134,7 +134,7 @@ def get_chord():
 @app.route('/mp3_sounds/<path:filename>')
 def serve_sound(filename):
     # アンダースコアや # の変換だけにする
-    filename = filename.replace("#", "sharp").replace("_", "")
+    filename = filename.replace("#", "sharp")
 
     file_path = os.path.join("static/mp3_sounds", filename)
 
@@ -157,7 +157,7 @@ def check_answer():
     correct = normalize(data['correct_answer']) if 'correct_answer' in data else normalize(data['correct_raw'])
 
     is_correct = (user == correct)
-    display_answer = data.get('correct_answer', data.get('correct_raw', '')).replace("sharp", "#").replace("major", "").replace("_", "")
+    display_answer = data.get('correct_answer', data.get('correct_raw', '')).replace("sharp", "#").replace("major", "")
 
     result = "正解！" if is_correct else f"不正解！正解は {display_answer} でした"
 
