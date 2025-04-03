@@ -129,14 +129,22 @@ def get_chord():
 
 @app.route('/mp3_sounds/<path:filename>')
 def serve_sound(filename):
+    # アンダースコアや # の変換だけにする
     filename = filename.replace("#", "sharp").replace("_", "")
+
     file_path = os.path.join("static/mp3_sounds", filename)
+
+    print(f"🎧 リクエストされたファイル: {filename}")
+    print(f"👉 探しているパス: {file_path}")
+
     if not os.path.exists(file_path):
         available_files = os.listdir("static/mp3_sounds/")
         print(f"❌ エラー: '{filename}' が見つかりません")
         print(f"📂 既存のファイル一覧: {available_files}")
         return jsonify({"error": f"ファイル '{filename}' が見つかりません"}), 404
+
     return send_from_directory("static/mp3_sounds", filename)
+
 
 @app.route('/check_answer', methods=['POST'])
 def check_answer():
@@ -195,3 +203,8 @@ if __name__ == '__main__':
 
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
+
+#import os
+#print("\n📂 MP3ファイル一覧:")
+#for f in os.listdir("static/mp3_sounds"):
+    #print(f"-", repr(f))
