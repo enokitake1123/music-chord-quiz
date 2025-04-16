@@ -19,7 +19,6 @@ def convert_midi_to_mp3(midi_file, mp3_file):
         print("❌ エラー: timidity が見つかりません。")
         return
 
-    mp3_file = mp3_file.replace("mp3sounds", "mp3_sounds").replace("#", "sharp").replace("_", "")
     mp3_dir = os.path.dirname(mp3_file)
     os.makedirs(mp3_dir, exist_ok=True)
 
@@ -44,7 +43,7 @@ def load_chords(directory="static/sounds"):
     chords = {}
     for file in os.listdir(directory):
         if file.endswith(".mid"):
-            chord_name = file.replace(".mid", "").replace("_", "")
+            chord_name = file.replace(".mid", "")
             chord_name = chord_name.replace("A#", "A#").replace("Bb", "Bflat")
             chords[chord_name] = file
     return chords
@@ -73,7 +72,7 @@ def create_midi_chord(chord_name, filename):
     }
     base, chord_type = chord_name.rsplit("_", 1) if "_" in chord_name else (chord_name, "major")
     base = base.replace("#", "sharp")
-    correct_filename = f"{base}{chord_type}.mid"
+    correct_filename = f"{base}_{chord_type}.mid"
     root_note = base_notes.get(base)
     if root_note is None or chord_type not in chord_types:
         print(f"{chord_name} は未登録のコードです。")
@@ -87,7 +86,7 @@ def create_midi_chord(chord_name, filename):
     track.append(Message("note_off", note=notes[0], velocity=64, time=960))
     for note in notes[1:]:
         track.append(Message("note_off", note=note, velocity=64, time=0))
-    mid.save(filename.replace("_", ""))
+    mid.save(filename)
 
 @app.route('/')
 def index():
@@ -96,7 +95,6 @@ def index():
 @app.route('/get_chord')
 def get_chord():
     difficulty = request.args.get("difficulty", "easy")
-
     easy_types = ["major", "minor"]
     medium_types = easy_types + ["7th", "minor7", "dim", "aug", "sus4"]
     hard_types = medium_types + ["add9", "m7-5", "7#9", "7-5", "7-9", "6", "m6", "major7"]
@@ -115,11 +113,8 @@ def get_chord():
         return jsonify({"error": "該当するコードがありません"}), 400
 
     correct_answer = random.choice(pool)
-
-    # ✅ 修正点：formatted と raw をアンダースコアなしで統一
-    formatted_answer = correct_answer.replace("#", "sharp").replace("_", "")
+    formatted_answer = correct_answer.replace("#", "sharp")
     display_answer = correct_answer.replace("sharp", "#").replace("_", "").replace("major", "")
-    raw_answer = correct_answer.replace("_", "")  # ← これが変更点！
 
     print(f"🎯 正解コード: {correct_answer}")
     print(f"🎧 再生ファイル: /mp3_sounds/{formatted_answer}.mp3")
@@ -127,44 +122,31 @@ def get_chord():
     return jsonify({
         "chord": f"/mp3_sounds/{formatted_answer}.mp3",
         "answer": display_answer,
-        "correct_raw": raw_answer  # ← 修正後の値を使う
+        "correct_raw": correct_answer
     })
-
 
 @app.route('/mp3_sounds/<path:filename>')
 def serve_sound(filename):
-    # アンダースコアや # の変換だけにする
-    filename = filename.replace("#", "sharp").replace("_", "")
-
+    filename = filename.replace("#", "sharp")
     file_path = os.path.join("static/mp3_sounds", filename)
-
     print(f"🎧 リクエストされたファイル: {filename}")
     print(f"👉 探しているパス: {file_path}")
-
     if not os.path.exists(file_path):
         available_files = os.listdir("static/mp3_sounds/")
         print(f"❌ エラー: '{filename}' が見つかりません")
         print(f"📂 既存のファイル一覧: {available_files}")
         return jsonify({"error": f"ファイル '{filename}' が見つかりません"}), 404
-
     return send_from_directory("static/mp3_sounds", filename)
-
 
 @app.route('/check_answer', methods=['POST'])
 def check_answer():
     data = request.get_json()
     user = normalize(data['answer'])
     correct = normalize(data['correct_answer']) if 'correct_answer' in data else normalize(data['correct_raw'])
-
     is_correct = (user == correct)
     display_answer = data.get('correct_answer', data.get('correct_raw', '')).replace("sharp", "#").replace("major", "").replace("_", "")
-
     result = "正解！" if is_correct else f"不正解！正解は {display_answer} でした"
-
-    return jsonify({
-        "result": result,
-        "correct": is_correct
-    })
+    return jsonify({"result": result, "correct": is_correct})
 
 def normalize(answer):
     answer = answer.strip().lower()
@@ -195,7 +177,7 @@ if __name__ == '__main__':
         for ctype in all_chord_types:
             chord_key = f"{base}_{ctype}"
             base_safe = base.replace("#", "sharp")
-            midi_filename = f"{base_safe}{ctype}.mid"
+            midi_filename = f"{base_safe}_{ctype}.mid"
             midi_path = os.path.join(midi_directory, midi_filename)
             mp3_filename = midi_filename.replace(".mid", ".mp3")
             mp3_path = os.path.join(mp3_directory, mp3_filename)
@@ -207,8 +189,3 @@ if __name__ == '__main__':
 
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
-
-#import os
-#print("\n📂 MP3ファイル一覧:")
-#for f in os.listdir("static/mp3_sounds"):
-    #print(f"-", repr(f))
