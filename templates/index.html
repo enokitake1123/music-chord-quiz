@@ -69,7 +69,11 @@
       fetch("/check_answer", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ answer: userAnswer, correct_answer: correctAnswer, correct_raw: correctRaw })
+        body: JSON.stringify({
+          answer: userAnswer,
+          correct_answer: correctAnswer,
+          correct_raw: correctRaw
+        })
       })
         .then(response => response.json())
         .then(data => {

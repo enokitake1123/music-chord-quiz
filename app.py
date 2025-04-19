@@ -43,7 +43,7 @@ def load_chords(directory="static/sounds"):
     chords = {}
     for file in os.listdir(directory):
         if file.endswith(".mid"):
-            chord_name = file.replace(".mid", "")
+            chord_name = file.replace(".mid", "").replace("_", "")
             chords[chord_name] = file
     return chords
 
@@ -70,6 +70,7 @@ def create_midi_chord(chord_name, filename):
         "m6": [0, 3, 7, 9]
     }
     base, chord_type = chord_name.rsplit("_", 1) if "_" in chord_name else (chord_name, "major")
+    chord_name_clean = f"{base}{chord_type}"
     root_note = base_notes.get(base)
     if root_note is None or chord_type not in chord_types:
         print(f"{chord_name} は未登録のコードです。")
@@ -110,7 +111,7 @@ def get_chord():
         return jsonify({"error": "該当するコードがありません"}), 400
 
     correct_answer = random.choice(pool)
-    display_answer = correct_answer.replace("major", "").replace("_", "")
+    display_answer = correct_answer.replace("major", "")
 
     print(f"🎯 正解コード: {correct_answer}")
     print(f"🎧 再生ファイル: /mp3_sounds/{correct_answer}.mp3")
@@ -139,13 +140,13 @@ def check_answer():
     user = normalize(data['answer'])
     correct = normalize(data['correct_answer']) if 'correct_answer' in data else normalize(data['correct_raw'])
     is_correct = (user == correct)
-    display_answer = data.get('correct_answer', data.get('correct_raw', '')).replace("major", "").replace("_", "")
+    display_answer = data.get('correct_answer', data.get('correct_raw', '')).replace("major", "")
     result = "正解！" if is_correct else f"不正解！正解は {display_answer} でした"
     return jsonify({"result": result, "correct": is_correct})
 
 def normalize(answer):
     answer = answer.strip().lower()
-    answer = answer.replace(" ", "").replace("_", "")
+    answer = answer.replace(" ", "")
     answer = answer.replace("♯", "#")
     answer = answer.replace("♭", "b")
     answer = answer.replace("major", "")
@@ -170,13 +171,13 @@ if __name__ == '__main__':
 
     for base in all_bases:
         for ctype in all_chord_types:
-            chord_key = f"{base}_{ctype}"
+            chord_key = f"{base}{ctype}"
             midi_filename = f"{chord_key}.mid"
             midi_path = os.path.join(midi_directory, midi_filename)
             mp3_filename = midi_filename.replace(".mid", ".mp3")
             mp3_path = os.path.join(mp3_directory, mp3_filename)
 
-            create_midi_chord(chord_key, midi_path)
+            create_midi_chord(f"{base}_{ctype}", midi_path)
             convert_midi_to_mp3(midi_path, mp3_path)
 
     chords = load_chords(midi_directory)

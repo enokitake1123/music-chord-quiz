@@ -42,27 +42,35 @@ chord_types = {
     "m6": [0, 3, 7, 9],
 }
 
+def sanitize_filename(chord_name):
+    return chord_name.replace("#", "sharp").replace("-", "").replace("7th", "7")  # ファイル名の特殊文字排除
+
 def create_midi(chord_name, path):
-    base, ctype = chord_name.rsplit("_", 1)
-    root = base_notes.get(base)
-    intervals = chord_types.get(ctype)
+    matched = False
+    for base in base_notes:
+        if chord_name.startswith(base):
+            ctype = chord_name[len(base):]
+            if ctype in chord_types:
+                root = base_notes[base]
+                intervals = chord_types[ctype]
+                notes = [root + i for i in intervals]
+                mid = MidiFile()
+                track = MidiTrack()
+                mid.tracks.append(track)
 
-    if root is None or intervals is None:
+                for note in notes:
+                    track.append(Message('note_on', note=note, velocity=64, time=0))
+                track.append(Message('note_off', note=notes[0], velocity=64, time=960))
+                for note in notes[1:]:
+                    track.append(Message('note_off', note=note, velocity=64, time=0))
+
+                mid.save(path)
+                matched = True
+                break
+
+    if not matched:
         print(f"スキップ: 未定義コード {chord_name}")
-        return
 
-    notes = [root + i for i in intervals]
-    mid = MidiFile()
-    track = MidiTrack()
-    mid.tracks.append(track)
-
-    for note in notes:
-        track.append(Message('note_on', note=note, velocity=64, time=0))
-    track.append(Message('note_off', note=notes[0], velocity=64, time=960))
-    for note in notes[1:]:
-        track.append(Message('note_off', note=note, velocity=64, time=0))
-
-    mid.save(path)
 
 def convert_to_mp3(midi_path, mp3_path):
     wav_path = midi_path.replace(".mid", ".wav")
@@ -77,11 +85,11 @@ def convert_to_mp3(midi_path, mp3_path):
     subprocess.run([ffmpeg, "-i", wav_path, "-b:a", "192k", "-y", mp3_path])
     os.remove(wav_path)
 
-# 全コードを生成
+# すべてのコードを生成
 for base in base_notes:
     for ctype in chord_types:
-        chord = f"{base}_{ctype}"
-        filename = chord  # そのままの表記でファイル名に
+        chord = f"{base}{ctype}"
+        filename = sanitize_filename(chord)
         midi_path = os.path.join(midi_dir, filename + ".mid")
         mp3_path = os.path.join(mp3_dir, filename + ".mp3")
 
