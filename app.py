@@ -44,7 +44,6 @@ def load_chords(directory="static/sounds"):
     for file in os.listdir(directory):
         if file.endswith(".mid"):
             chord_name = file.replace(".mid", "")
-            chord_name = chord_name.replace("A#", "A#").replace("Bb", "Bflat")
             chords[chord_name] = file
     return chords
 
@@ -71,8 +70,6 @@ def create_midi_chord(chord_name, filename):
         "m6": [0, 3, 7, 9]
     }
     base, chord_type = chord_name.rsplit("_", 1) if "_" in chord_name else (chord_name, "major")
-    base = base.replace("#", "sharp")
-    correct_filename = f"{base}_{chord_type}.mid"
     root_note = base_notes.get(base)
     if root_note is None or chord_type not in chord_types:
         print(f"{chord_name} は未登録のコードです。")
@@ -113,21 +110,19 @@ def get_chord():
         return jsonify({"error": "該当するコードがありません"}), 400
 
     correct_answer = random.choice(pool)
-    formatted_answer = correct_answer.replace("#", "sharp")
-    display_answer = correct_answer.replace("sharp", "#").replace("_", "").replace("major", "")
+    display_answer = correct_answer.replace("major", "").replace("_", "")
 
     print(f"🎯 正解コード: {correct_answer}")
-    print(f"🎧 再生ファイル: /mp3_sounds/{formatted_answer}.mp3")
+    print(f"🎧 再生ファイル: /mp3_sounds/{correct_answer}.mp3")
 
     return jsonify({
-        "chord": f"/mp3_sounds/{formatted_answer}.mp3",
+        "chord": f"/mp3_sounds/{correct_answer}.mp3",
         "answer": display_answer,
         "correct_raw": correct_answer
     })
 
 @app.route('/mp3_sounds/<path:filename>')
 def serve_sound(filename):
-    filename = filename.replace("#", "sharp")
     file_path = os.path.join("static/mp3_sounds", filename)
     print(f"🎧 リクエストされたファイル: {filename}")
     print(f"👉 探しているパス: {file_path}")
@@ -144,15 +139,15 @@ def check_answer():
     user = normalize(data['answer'])
     correct = normalize(data['correct_answer']) if 'correct_answer' in data else normalize(data['correct_raw'])
     is_correct = (user == correct)
-    display_answer = data.get('correct_answer', data.get('correct_raw', '')).replace("sharp", "#").replace("major", "").replace("_", "")
+    display_answer = data.get('correct_answer', data.get('correct_raw', '')).replace("major", "").replace("_", "")
     result = "正解！" if is_correct else f"不正解！正解は {display_answer} でした"
     return jsonify({"result": result, "correct": is_correct})
 
 def normalize(answer):
     answer = answer.strip().lower()
     answer = answer.replace(" ", "").replace("_", "")
-    answer = answer.replace("♯", "sharp").replace("#", "sharp")
-    answer = answer.replace("♭", "flat")
+    answer = answer.replace("♯", "#")
+    answer = answer.replace("♭", "b")
     answer = answer.replace("major", "")
     answer = answer.replace("minor", "m")
     answer = answer.replace("th", "")
@@ -176,8 +171,7 @@ if __name__ == '__main__':
     for base in all_bases:
         for ctype in all_chord_types:
             chord_key = f"{base}_{ctype}"
-            base_safe = base.replace("#", "sharp")
-            midi_filename = f"{base_safe}_{ctype}.mid"
+            midi_filename = f"{chord_key}.mid"
             midi_path = os.path.join(midi_directory, midi_filename)
             mp3_filename = midi_filename.replace(".mid", ".mp3")
             mp3_path = os.path.join(mp3_directory, mp3_filename)

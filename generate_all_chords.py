@@ -81,8 +81,7 @@ def convert_to_mp3(midi_path, mp3_path):
 for base in base_notes:
     for ctype in chord_types:
         chord = f"{base}_{ctype}"
-        base_safe = base.replace("#", "sharp")
-        filename = f"{base_safe}{ctype}"
+        filename = chord  # そのままの表記でファイル名に
         midi_path = os.path.join(midi_dir, filename + ".mid")
         mp3_path = os.path.join(mp3_dir, filename + ".mp3")
 
